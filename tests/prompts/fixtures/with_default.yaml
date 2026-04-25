@@ -1,0 +1,2 @@
+template: |
+  Greeting: {{ greeting | default("Hi") }}, Name: {{ name }}.
