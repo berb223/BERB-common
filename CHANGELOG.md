@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Methods: `get_system()`, `render_user(slug, **variables)`, `bundle(slug, **variables)`, `clear_cache()`, `prompts_dir` property.
 - `berb_common.models` module:
   - `LLMResponse` — pydantic v2 model: `success`, `status_code`, `content`, `error_message`, `input_tokens`, `output_tokens`, `stop_reason`, `model`, `duration_seconds`, plus `total_tokens` property.
+  - `RetryConfig` — pydantic v2 model with `max_retries`, `initial_backoff_seconds`, `backoff_multiplier`, `max_backoff_seconds`, `retryable_status_codes`. Helper methods `backoff_for(attempt)` and `should_retry(status_code, attempt)`.
+  - Model ID constants: `MODEL_OPUS = "claude-opus-4-7"`, `MODEL_SONNET = "claude-sonnet-4-6"`, `MODEL_HAIKU = "claude-haiku-4-5-20251001"`, `DEFAULT_MODEL = MODEL_SONNET`.
 - `berb_common.anthropic` module:
   - `AnthropicClient(*, api_key, model, timeout=60.0, max_retries=2, ssl_verify=True)` — Anthropic Messages API wrapper. Returns `LLMResponse`; never raises on API errors (status, connection failures captured into `success=False`). Uses the SDK's built-in retry mechanism for transient errors.
   - Methods: `call(*, user, system="", max_tokens=4096, temperature=1.0)`, `verify()`, `model` property.
