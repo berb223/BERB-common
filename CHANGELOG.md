@@ -22,3 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `berb_common.prompts` module:
   - `PromptRegistry(prompts_dir, *, strict_undefined=False)` — generic YAML + Jinja2 prompt loader. Reads `<dir>/system.yaml` (`system_prompt` key) and `<dir>/<slug>.yaml` (`template` key). Per-instance caching with `clear_cache()`. No project-specific defaults or fields (per ADR-008).
   - Methods: `get_system()`, `render_user(slug, **variables)`, `bundle(slug, **variables)`, `clear_cache()`, `prompts_dir` property.
+- `berb_common.models` module:
+  - `LLMResponse` — pydantic v2 model: `success`, `status_code`, `content`, `error_message`, `input_tokens`, `output_tokens`, `stop_reason`, `model`, `duration_seconds`, plus `total_tokens` property.
+- `berb_common.anthropic` module:
+  - `AnthropicClient(*, api_key, model, timeout=60.0, max_retries=2, ssl_verify=True)` — Anthropic Messages API wrapper. Returns `LLMResponse`; never raises on API errors (status, connection failures captured into `success=False`). Uses the SDK's built-in retry mechanism for transient errors.
+  - Methods: `call(*, user, system="", max_tokens=4096, temperature=1.0)`, `verify()`, `model` property.
