@@ -19,3 +19,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `berb_common.logging` module:
   - `configure_logging(*, debug=False, service_name=None)` — sets up structlog with `ConsoleRenderer` (debug) or `JSONRenderer` (prod), ISO-8601 timestamps, log-level processor, and optional `service` field bound via `structlog.contextvars`.
   - `get_logger(name=None)` — returns a structlog `BoundLogger` for module-scoped logging.
+- `berb_common.prompts` module:
+  - `PromptRegistry(prompts_dir, *, strict_undefined=False)` — generic YAML + Jinja2 prompt loader. Reads `<dir>/system.yaml` (`system_prompt` key) and `<dir>/<slug>.yaml` (`template` key). Per-instance caching with `clear_cache()`. No project-specific defaults or fields (per ADR-008).
+  - Methods: `get_system()`, `render_user(slug, **variables)`, `bundle(slug, **variables)`, `clear_cache()`, `prompts_dir` property.

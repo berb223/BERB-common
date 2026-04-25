@@ -1,0 +1,2 @@
+template: |
+  Hello, {{ name }}! Year is {{ current_year }}.
