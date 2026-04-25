@@ -1,0 +1,60 @@
+[project]
+name = "berb-common"
+version = "0.0.1"
+description = "Shared Python runtime library: secrets, logging, prompts, Anthropic client, common models. Personal IP."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Beat Erb", email = "beat.erb@bluewin.ch"}]
+license = {text = "Proprietary"}
+classifiers = [
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "anthropic>=0.40",
+    "jinja2>=3.1",
+    "pydantic>=2.5",
+    "pyyaml>=6.0",
+    "structlog>=24.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/berb223/BERB-common"
+Repository = "https://github.com/berb223/BERB-common.git"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pre-commit>=3.7",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-mock>=3.14",
+    "ruff>=0.6",
+    "syrupy>=4.7",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/berb_common"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --cov=src/berb_common --cov-report=term-missing --cov-fail-under=80"
+testpaths = ["tests"]
