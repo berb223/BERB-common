@@ -22,11 +22,19 @@ Without a shared library, every project re-implements 1Password lookups, structl
 
 ## Install
 
-Once published (Phase 2.7), add a `[[tool.uv.index]]` block in your `pyproject.toml` pointing at GitHub Packages, authenticate via `gh auth token`, then:
+Releases attach a built wheel and sdist as GitHub Release assets. Install the wheel directly:
 
 ```bash
-uv add "berb-common>=0.1.0,<0.2.0"
+uv add "berb-common @ https://github.com/berb223/BERB-common/releases/download/v0.1.0/berb_common-0.1.0-py3-none-any.whl"
 ```
+
+Or install from the tagged source:
+
+```bash
+uv add "berb-common @ git+https://github.com/berb223/BERB-common.git@v0.1.0"
+```
+
+Both paths require a GitHub authentication for the private repo (e.g. `gh auth login` with `read:packages`).
 
 ## Configuration
 
@@ -55,7 +63,7 @@ Coverage threshold is 80% — CI fails below that.
 
 ## Deploy
 
-Tagged releases (`v*`) trigger `.github/workflows/publish.yml`, which publishes to GitHub Packages.
+Creating a GitHub release with a `v*` tag triggers `.github/workflows/publish.yml`, which builds `wheel` + `sdist` with `uv build` and uploads them as release artifacts.
 
 ## Architecture
 
