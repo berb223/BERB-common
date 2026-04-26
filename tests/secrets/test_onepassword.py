@@ -176,3 +176,151 @@ class TestTryReadOpSecret:
             return_value=_proc(0, stdout="value"),
         )
         assert try_read_op_secret("op://Vault/Item/field") == "value"
+
+
+class TestProcessCache:
+    """In-process cache: always on, hit on second call within the same process."""
+
+    def test_second_call_skips_subprocess(self, mocker: MockerFixture) -> None:
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        run = mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            return_value=_proc(0, stdout="value-1"),
+        )
+        assert read_op_secret("op://V/I/f") == "value-1"
+        assert read_op_secret("op://V/I/f") == "value-1"
+        assert run.call_count == 1
+
+    def test_clear_op_cache_forces_resubprocess(self, mocker: MockerFixture) -> None:
+        from berb_common.secrets import clear_op_cache
+
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        run = mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            side_effect=[_proc(0, stdout="value-1"), _proc(0, stdout="value-2")],
+        )
+        assert read_op_secret("op://V/I/f") == "value-1"
+        clear_op_cache()
+        assert read_op_secret("op://V/I/f") == "value-2"
+        assert run.call_count == 2
+
+
+class TestDiskCache:
+    """OS keystore cache: opt-out via env, 24h TTL by default, keyring-backed."""
+
+    @pytest.fixture
+    def fake_keyring(self, mocker: MockerFixture) -> Any:
+        """Replace `keyring` with an in-memory shim that records reads/writes."""
+        import sys
+        import types
+
+        store: dict[tuple[str, str], str] = {}
+
+        class _Errors(types.ModuleType):
+            class PasswordDeleteError(Exception):
+                pass
+
+        errors_mod = _Errors("keyring.errors")
+
+        keyring_mod = types.ModuleType("keyring")
+        keyring_mod.errors = errors_mod  # type: ignore[attr-defined]
+        keyring_mod.get_password = (  # type: ignore[attr-defined]
+            lambda service, user: store.get((service, user))
+        )
+        keyring_mod.set_password = (  # type: ignore[attr-defined]
+            lambda service, user, value: store.__setitem__((service, user), value)
+        )
+
+        def _delete(service: str, user: str) -> None:
+            if (service, user) not in store:
+                raise errors_mod.PasswordDeleteError(f"missing: {user}")
+            del store[(service, user)]
+
+        keyring_mod.delete_password = _delete  # type: ignore[attr-defined]
+        mocker.patch.dict(sys.modules, {"keyring": keyring_mod, "keyring.errors": errors_mod})
+        return store
+
+    def test_disk_cache_disabled_does_not_touch_keyring(
+        self, mocker: MockerFixture, fake_keyring: Any
+    ) -> None:
+        # Default conftest sets BERB_OP_DISK_CACHE=0
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            return_value=_proc(0, stdout="value"),
+        )
+        assert read_op_secret("op://V/I/f") == "value"
+        assert fake_keyring == {}, "no entry should be written when disk cache is off"
+
+    def test_disk_cache_writes_then_reads(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, fake_keyring: Any
+    ) -> None:
+        from berb_common.secrets import clear_op_cache
+
+        monkeypatch.setenv("BERB_OP_DISK_CACHE", "1")
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        run = mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            return_value=_proc(0, stdout="value-1"),
+        )
+        assert read_op_secret("op://V/I/f") == "value-1"
+        assert len(fake_keyring) == 1, "first call writes to keyring"
+
+        clear_op_cache()  # drop process cache; keyring is the only source now
+        run.return_value = _proc(0, stdout="value-2")
+        assert read_op_secret("op://V/I/f") == "value-1", "served from keyring, op not called"
+        assert run.call_count == 1, "subprocess only ran once"
+
+    def test_disk_cache_respects_ttl_expiry(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, fake_keyring: Any
+    ) -> None:
+        from berb_common.secrets import clear_op_cache
+
+        monkeypatch.setenv("BERB_OP_DISK_CACHE", "1")
+        monkeypatch.setenv("BERB_OP_DISK_CACHE_TTL_SEC", "60")
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        run = mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            side_effect=[_proc(0, stdout="value-1"), _proc(0, stdout="value-2")],
+        )
+        # First call seeds the cache.
+        time_mock = mocker.patch("berb_common.secrets.onepassword.time.time", return_value=1000.0)
+        assert read_op_secret("op://V/I/f") == "value-1"
+
+        # Advance well past TTL; the keyring entry must be ignored.
+        clear_op_cache()
+        time_mock.return_value = 1000.0 + 120  # 60s past 60s TTL
+        assert read_op_secret("op://V/I/f") == "value-2"
+        assert run.call_count == 2
+
+    def test_clear_op_disk_cache_removes_keyring_entry(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, fake_keyring: Any
+    ) -> None:
+        from berb_common.secrets import clear_op_disk_cache
+
+        monkeypatch.setenv("BERB_OP_DISK_CACHE", "1")
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            return_value=_proc(0, stdout="v"),
+        )
+        read_op_secret("op://V/I/f")
+        assert len(fake_keyring) == 1
+        clear_op_disk_cache("op://V/I/f")
+        assert fake_keyring == {}
+
+    def test_keyring_unavailable_degrades_silently(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If `keyring` import raises, read_op_secret still works (no caching)."""
+        import sys
+
+        monkeypatch.setenv("BERB_OP_DISK_CACHE", "1")
+        # Force `import keyring` to ImportError inside the cache helpers.
+        monkeypatch.setitem(sys.modules, "keyring", None)
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        mocker.patch(
+            "berb_common.secrets.onepassword.subprocess.run",
+            return_value=_proc(0, stdout="value"),
+        )
+        assert read_op_secret("op://V/I/f") == "value"

@@ -1,6 +1,6 @@
 [project]
 name = "berb-common"
-version = "0.1.2"
+version = "0.1.3"
 description = "Shared Python runtime library: secrets, logging, prompts, Anthropic client, common models. Personal IP."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,6 +15,10 @@ classifiers = [
 dependencies = [
     "anthropic>=0.40",
     "jinja2>=3.1",
+    # OS keystore for op-secret disk cache (DPAPI on Windows, Keychain on macOS,
+    # Secret Service on Linux). Optional at runtime — graceful degradation if
+    # the backend is unavailable — but pinning here keeps consumers consistent.
+    "keyring>=24.0",
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "structlog>=24.1",

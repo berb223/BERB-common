@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-04-26
+
+### Added
+
+- `read_op_secret` now caches resolved secrets through two transparent layers:
+  1. **Process cache** (always on) — per-process `dict[ref, value]`. Wiped at process exit and by `clear_op_cache()`. Eliminates repeated `op read` subprocess overhead in long-running services.
+  2. **OS keystore disk cache** (default on; opt out with `BERB_OP_DISK_CACHE=0`) — uses the `keyring` library, which delegates to **Credential Manager (DPAPI) on Windows**, **Keychain on macOS**, and **Secret Service on Linux**. TTL defaults to 24 hours; override with `BERB_OP_DISK_CACHE_TTL_SEC`. Cleared per reference via `clear_op_disk_cache(ref)`. Silently no-op when `keyring` is unavailable.
+- New exports: `clear_op_cache`, `clear_op_disk_cache`.
+
+### Dependencies
+
+- Added `keyring>=24.0`.
+
 ## [0.1.2] — 2026-04-26
 
 ### Fixed
