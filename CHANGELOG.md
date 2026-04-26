@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-04-26
+
+### Added
+
+- `src/berb_common/py.typed` — PEP 561 marker so consumers' mypy treats `berb_common` as typed. Retires the `follow_imports = "skip"` workaround in `FTNT-sales-workbench` and `FTNT-bdm-operations` (project-local ADR-002 in both repos).
+
 ## [0.1.0] — 2026-04-25
 
 First tagged release. Phase 2 of the FTNT/BERB portfolio standardization plan.
