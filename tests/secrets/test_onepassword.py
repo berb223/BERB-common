@@ -98,7 +98,14 @@ class TestFindOpExecutable:
         assert _find_op_executable() == "/usr/bin/op"
 
     def test_windows_fallback_program_files(self, mocker: MockerFixture) -> None:
+        # `os.path.join` resolves separators per the host OS, so build the
+        # expected path the same way the production code does to stay
+        # platform-agnostic in CI.
+        import os.path as _osp
+
         from berb_common.secrets.onepassword import _find_op_executable
+
+        expected = _osp.join(r"C:\Program Files", "1Password CLI", "op.exe")
 
         mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
         mocker.patch("berb_common.secrets.onepassword.sys.platform", "win32")
@@ -109,10 +116,10 @@ class TestFindOpExecutable:
         )
         mocker.patch(
             "berb_common.secrets.onepassword.os.path.isfile",
-            side_effect=lambda p: p == r"C:\Program Files\1Password CLI\op.exe",
+            side_effect=lambda p: p == expected,
         )
         mocker.patch("berb_common.secrets.onepassword.glob", return_value=[])
-        assert _find_op_executable() == r"C:\Program Files\1Password CLI\op.exe"
+        assert _find_op_executable() == expected
 
     def test_windows_fallback_winget(self, mocker: MockerFixture) -> None:
         from berb_common.secrets.onepassword import _find_op_executable
