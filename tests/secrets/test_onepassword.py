@@ -25,8 +25,8 @@ class TestReadOpSecret:
             read_op_secret("   ")
 
     def test_missing_op_binary_raises(self, mocker: MockerFixture) -> None:
-        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
-        with pytest.raises(OpReadError, match="not found in PATH"):
+        mocker.patch("berb_common.secrets.onepassword._find_op_executable", return_value=None)
+        with pytest.raises(OpReadError, match="not found"):
             read_op_secret("op://Vault/Item/field")
 
     def test_success_returns_value(self, mocker: MockerFixture) -> None:
@@ -81,6 +81,85 @@ class TestReadOpSecret:
         )
         with pytest.raises(OpReadError, match="timed out"):
             read_op_secret("op://Vault/Item/field", timeout_sec=45.0)
+
+
+class TestFindOpExecutable:
+    """Cross-system discovery: PATH first, then well-known install locations.
+
+    Important when the launching shell has a stripped PATH (background
+    services, IDE-spawned processes, automation tools) but the CLI is still
+    installed on the machine.
+    """
+
+    def test_returns_path_when_on_path(self, mocker: MockerFixture) -> None:
+        from berb_common.secrets.onepassword import _find_op_executable
+
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value="/usr/bin/op")
+        assert _find_op_executable() == "/usr/bin/op"
+
+    def test_windows_fallback_program_files(self, mocker: MockerFixture) -> None:
+        # `os.path.join` resolves separators per the host OS, so build the
+        # expected path the same way the production code does to stay
+        # platform-agnostic in CI.
+        import os.path as _osp
+
+        from berb_common.secrets.onepassword import _find_op_executable
+
+        expected = _osp.join(r"C:\Program Files", "1Password CLI", "op.exe")
+
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
+        mocker.patch("berb_common.secrets.onepassword.sys.platform", "win32")
+        mocker.patch.dict(
+            "berb_common.secrets.onepassword.os.environ",
+            {"PROGRAMFILES": r"C:\Program Files", "LOCALAPPDATA": r"C:\Users\u\AppData\Local"},
+            clear=False,
+        )
+        mocker.patch(
+            "berb_common.secrets.onepassword.os.path.isfile",
+            side_effect=lambda p: p == expected,
+        )
+        mocker.patch("berb_common.secrets.onepassword.glob", return_value=[])
+        assert _find_op_executable() == expected
+
+    def test_windows_fallback_winget(self, mocker: MockerFixture) -> None:
+        from berb_common.secrets.onepassword import _find_op_executable
+
+        winget_path = (
+            r"C:\Users\u\AppData\Local\Microsoft\WinGet\Packages\AgileBits.1Password.CLI_x\op.exe"
+        )
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
+        mocker.patch("berb_common.secrets.onepassword.sys.platform", "win32")
+        mocker.patch.dict(
+            "berb_common.secrets.onepassword.os.environ",
+            {"PROGRAMFILES": r"C:\Program Files", "LOCALAPPDATA": r"C:\Users\u\AppData\Local"},
+            clear=False,
+        )
+        mocker.patch("berb_common.secrets.onepassword.glob", return_value=[winget_path])
+        # Program Files install absent; only the winget copy exists.
+        mocker.patch(
+            "berb_common.secrets.onepassword.os.path.isfile",
+            side_effect=lambda p: p == winget_path,
+        )
+        assert _find_op_executable() == winget_path
+
+    def test_posix_fallback_homebrew(self, mocker: MockerFixture) -> None:
+        from berb_common.secrets.onepassword import _find_op_executable
+
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
+        mocker.patch("berb_common.secrets.onepassword.sys.platform", "linux")
+        mocker.patch(
+            "berb_common.secrets.onepassword.os.path.isfile",
+            side_effect=lambda p: p == "/opt/homebrew/bin/op",
+        )
+        assert _find_op_executable() == "/opt/homebrew/bin/op"
+
+    def test_returns_none_when_nowhere(self, mocker: MockerFixture) -> None:
+        from berb_common.secrets.onepassword import _find_op_executable
+
+        mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
+        mocker.patch("berb_common.secrets.onepassword.sys.platform", "linux")
+        mocker.patch("berb_common.secrets.onepassword.os.path.isfile", return_value=False)
+        assert _find_op_executable() is None
 
 
 class TestTryReadOpSecret:

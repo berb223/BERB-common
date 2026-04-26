@@ -20,12 +20,61 @@ in an env file before launching the child process.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import sys
+from glob import glob
 
 
 class OpReadError(Exception):
     """Raised when reading a secret via the 1Password CLI fails."""
+
+
+def _find_op_executable() -> str | None:
+    """Locate the 1Password CLI executable.
+
+    First consults ``PATH`` via :func:`shutil.which`. If that fails, falls back
+    to a small list of well-known install locations so the CLI is reachable
+    even when the launching shell has a stripped ``PATH`` (background services,
+    automation tools, IDE-spawned subprocesses).
+
+    Returns:
+        Path to the executable, or ``None`` if not found anywhere.
+    """
+    found = shutil.which("op")
+    if found:
+        return found
+
+    if sys.platform == "win32":
+        candidates: list[str] = []
+        program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+        candidates.append(os.path.join(program_files, "1Password CLI", "op.exe"))
+        if local_appdata:
+            # winget installs under a versioned package directory.
+            candidates.extend(
+                glob(
+                    os.path.join(
+                        local_appdata,
+                        "Microsoft",
+                        "WinGet",
+                        "Packages",
+                        "AgileBits.1Password.CLI_*",
+                        "op.exe",
+                    )
+                )
+            )
+        for path in candidates:
+            if path and os.path.isfile(path):
+                return path
+        return None
+
+    # POSIX fallbacks for shells where /usr/local/bin or Homebrew aren't on PATH.
+    for path in ("/usr/local/bin/op", "/opt/homebrew/bin/op", "/usr/bin/op"):
+        if os.path.isfile(path):
+            return path
+    return None
 
 
 def read_op_secret(reference: str, *, timeout_sec: float = 45.0) -> str:
@@ -51,10 +100,10 @@ def read_op_secret(reference: str, *, timeout_sec: float = 45.0) -> str:
     if not ref.startswith("op://"):
         raise OpReadError(f"1Password reference must start with op:// (got: {reference!r})")
 
-    op_exe = shutil.which("op")
+    op_exe = _find_op_executable()
     if op_exe is None:
         raise OpReadError(
-            "1Password CLI 'op' not found in PATH. "
+            "1Password CLI 'op' not found in PATH or known install locations. "
             "Install from https://developer.1password.com/docs/cli/get-started/"
         )
 
