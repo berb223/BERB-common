@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-26
+
+### Fixed
+
+- `read_op_secret` now finds the 1Password CLI (`op`) at well-known install locations when it is missing from `PATH`. Previously, processes spawned with a stripped `PATH` (background services, IDE-spawned subprocesses, automation tools) would always raise `OpReadError("not found in PATH")` even when `op` was installed. Locations probed (Windows): `%PROGRAMFILES%\1Password CLI\op.exe`, `%LOCALAPPDATA%\Microsoft\WinGet\Packages\AgileBits.1Password.CLI_*\op.exe`. POSIX: `/usr/local/bin/op`, `/opt/homebrew/bin/op`, `/usr/bin/op`.
+
 ## [0.1.1] — 2026-04-26
 
 ### Added
