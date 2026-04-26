@@ -118,7 +118,7 @@ class TestFindOpExecutable:
         from berb_common.secrets.onepassword import _find_op_executable
 
         winget_path = (
-            r"C:\Users\u\AppData\Local\Microsoft\WinGet\Packages\AgileBits.1Password.CLI_x\op.exe"  # noqa: E501
+            r"C:\Users\u\AppData\Local\Microsoft\WinGet\Packages\AgileBits.1Password.CLI_x\op.exe"
         )
         mocker.patch("berb_common.secrets.onepassword.shutil.which", return_value=None)
         mocker.patch("berb_common.secrets.onepassword.sys.platform", "win32")
