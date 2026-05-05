@@ -1,33 +1,25 @@
 name: Publish
 
-on:
-  release:
-    types: [published]
+# Build wheel + sdist on tag push and attach them to the matching
+# GitHub Release. Delegates to the reusable workflow in BERB-workflows
+# so every Python repo in the FTNT/BERB portfolio publishes the same
+# way.
+#
+# Trigger: push of a `v*` tag. The reusable workflow will create the
+# Release if it doesn't already exist, generate notes from commit
+# history, and upload `dist/*.whl` + `dist/*.tar.gz` as assets.
+#
+# To release: bump `project.version` in pyproject.toml, update
+# CHANGELOG.md, merge the bump PR, then `git tag v0.1.4 && git push
+# origin v0.1.4`. The workflow's `verify-version-matches-tag` guard
+# fails the build if the tag and the pyproject version disagree.
 
-permissions:
-  contents: write
+on:
+  push:
+    tags: ["v*"]
 
 jobs:
-  build-and-upload:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Build sdist + wheel
-        run: uv build
-
-      - name: List built artifacts
-        run: ls -la dist/
-
-      - name: Upload to GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            dist/*.whl dist/*.tar.gz \
-            --clobber
+  publish:
+    uses: berb223/BERB-workflows/.github/workflows/python-publish.yml@v1
+    with:
+      python-version: "3.12"
