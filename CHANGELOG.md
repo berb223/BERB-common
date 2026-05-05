@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-05-05
+
+### Changed
+
+- **Publish workflow now uses the reusable workflow from `BERB-workflows`** (`berb223/BERB-workflows/.github/workflows/python-publish.yml@v1`). The previous inline `publish.yml` triggered on `release: published` and required the user to draft the GitHub Release in the UI first; the reusable workflow triggers on `push: tags: ["v*"]` and auto-creates the Release with notes generated from commit history. Adds a `verify-version-matches-tag` guard (on by default) that fails the build if `v<X>.<Y>.<Z>` doesn't match `project.version` in `pyproject.toml`. Wheel + sdist still attached as Release assets; no PyPI upload (per portfolio secrets policy: 1Password is the only secret manager). This release validates the new workflow end-to-end.
+
 ## [0.1.3] — 2026-04-26
 
 ### Added
