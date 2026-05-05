@@ -18,6 +18,13 @@ on:
   push:
     tags: ["v*"]
 
+# The reusable workflow needs `contents: write` to create the Release
+# and upload the wheel + sdist. Caller must grant it explicitly here —
+# permissions in the called workflow can only narrow what the caller
+# already allows.
+permissions:
+  contents: write
+
 jobs:
   publish:
     uses: berb223/BERB-workflows/.github/workflows/python-publish.yml@v1
