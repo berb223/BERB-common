@@ -1,0 +1,62 @@
+"""Tests for berb_common.verified_sources.prompts."""
+
+from __future__ import annotations
+
+from berb_common.verified_sources.models import VerifiedStepRequest
+from berb_common.verified_sources.prompts import build_system_prompt, build_user_prompt
+
+
+def _request(**overrides: object) -> VerifiedStepRequest:
+    base: dict[str, object] = {
+        "title": "Recent News, M&A",
+        "focus": "Recent deals.",
+        "category": "news_trends_ma",
+        "company_name": "Acme Corp",
+        "country": "Switzerland",
+        "industry": "Manufacturing",
+        "website": "https://acme.example",
+        "max_results": 5,
+    }
+    base.update(overrides)
+    return VerifiedStepRequest(**base)  # type: ignore[arg-type]
+
+
+class TestSystemPrompt:
+    def test_starts_with_framing(self) -> None:
+        request = _request(framing="You are a senior analyst.")
+        out = build_system_prompt(request)
+        assert out.startswith("You are a senior analyst.")
+
+    def test_default_framing_is_generic(self) -> None:
+        out = build_system_prompt(_request())
+        assert "Fortinet" not in out
+        assert "business analyst" in out.lower()
+
+    def test_interpolates_max_results(self) -> None:
+        out = build_system_prompt(_request(max_results=7))
+        assert "up to 7 objects" in out
+        assert "up to 7 results" not in out  # only the array sentence mentions count
+
+    def test_strict_url_rule_present(self) -> None:
+        out = build_system_prompt(_request())
+        assert "https://" in out
+        assert "Do NOT invent URLs" in out
+
+
+class TestUserPrompt:
+    def test_includes_topic_and_company(self) -> None:
+        out = build_user_prompt(_request())
+        assert "Recent News, M&A" in out
+        assert "Acme Corp" in out
+        assert "Switzerland" in out
+        assert "Manufacturing" in out
+        assert "https://acme.example" in out
+
+    def test_includes_focus_and_category(self) -> None:
+        out = build_user_prompt(_request())
+        assert "Recent deals." in out
+        assert "news_trends_ma" in out
+
+    def test_relays_max_results(self) -> None:
+        out = build_user_prompt(_request(max_results=3))
+        assert "up to 3 results" in out

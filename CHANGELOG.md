@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-06
+
+### Added
+
+- **`berb_common.verified_sources` package** — portfolio-wide LLM-driven web research with URL validation. Public API:
+  - `VerifiedSourceRow` / `VerifiedStepRequest` / `VerifiedStepResult` (Pydantic models).
+  - `parse_verified_sources_json` + `parse_pipe_fallback` (parser, with a recovery path for prose-wrapped or malformed responses).
+  - `build_system_prompt` + `build_user_prompt` (strict JSON-only contract; framing parameterised so consumers supply their own role line).
+  - `verify_url` / `verify_urls` / `filter_dead_rows` (HTTPS reachability via HEAD-then-GET probes; parallel via `ThreadPoolExecutor`).
+  - `run_verified_step` (end-to-end pipeline: prompt → AnthropicClient → parse → validate links → return kept rows + dropped rows).
+- Lifted from FTNT-sales-workbench's `account_planning/verified_sources/` (link-verifier, parser, prompts) and `parsing/verified_sources.py`. The Fortinet-specific 8-step research catalogue and Excel writers stay in the consumer.
+- `validate_links` defaults to **True** in `run_verified_step` — the named "Verified" promise of the package. Pass `validate_links=False` to skip the network probes.
+
+### Dependencies
+
+- Added `httpx>=0.27` (already used internally by the Anthropic SDK wrapper; promoted to a first-class dependency for the URL verifier).
+
 ## [0.1.5] — 2026-05-06
 
 ### Changed
