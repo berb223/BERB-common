@@ -12,13 +12,37 @@ from __future__ import annotations
 from berb_common.verified_sources.models import VerifiedStepRequest
 
 
-def build_system_prompt(request: VerifiedStepRequest) -> str:
+def build_system_prompt(request: VerifiedStepRequest, *, web_search: bool = False) -> str:
     """Return the system prompt for one research step.
 
     The first line is the consumer-supplied ``framing`` (role); the rest is
     the strict JSON output contract. ``request.max_results`` is interpolated
     into the contract so the model knows the per-step cap.
+
+    Args:
+        request: The step request (drives the ``max_results`` interpolation
+            and the ``framing`` first line).
+        web_search: When ``True``, the prompt instructs the model to use the
+            ``web_search`` tool and cite ONLY URLs that appeared in tool
+            results. When ``False`` (default), the prompt asks the model to
+            recall real URLs from training data without inventing — the
+            pre-tool-use behaviour. Set ``True`` whenever the runner is
+            invoked with ``tools=[web_search_tool()]``.
     """
+    if web_search:
+        url_rules = (
+            "4) Use the web_search tool to find sources. Cite ONLY URLs that appeared in your "
+            "tool-result blocks; do NOT output URLs you did not see in search results.\n"
+            "5) If web_search returned no usable URL for an entry, omit that result object. "
+            "Better to return fewer results than to include an unverified URL."
+        )
+    else:
+        url_rules = (
+            "4) Every url MUST start with https:// and be a real, publicly reachable page you "
+            "are confident about.\n"
+            "5) Do NOT invent URLs, paths, or domains. If you cannot cite a real https URL, "
+            "omit that result object."
+        )
     return f"""{request.framing}
 
 OUTPUT RULES (STRICT):
@@ -27,10 +51,10 @@ OUTPUT RULES (STRICT):
    {{"category":"<category_key>","company":"<string>","industry":"<string>","country":"<string>","results":[...]}}
 3) results is an array of up to {request.max_results} objects, each:
    {{"url":"https://...","source_type":"<short label>","deal_parties":"<string or empty>","description":"<one or two sentences>"}}
-4) Every url MUST start with https:// and be a real, publicly reachable page you are confident about.
-5) Do NOT invent URLs, paths, or domains. If you cannot cite a real https URL, omit that result object.
+{url_rules}
 6) source_type examples: company_press_release, business_news, regulatory_filing, industry_report, company_site.
-7) Use ASCII-only in JSON strings where possible."""
+7) Use ASCII-only in JSON strings where possible.
+8) Ground every description in actual content from the cited source — do not invent facts about a company or topic the source does not support."""
 
 
 def build_user_prompt(request: VerifiedStepRequest) -> str:

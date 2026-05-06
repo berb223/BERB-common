@@ -84,6 +84,7 @@ class AnthropicClient:
         system: str = "",
         max_tokens: int = 4096,
         temperature: float = 1.0,
+        tools: list[dict[str, Any]] | None = None,
     ) -> LLMResponse:
         """Send a single request to the Anthropic Messages API.
 
@@ -92,6 +93,12 @@ class AnthropicClient:
             system: Optional system prompt. Empty string omits the field.
             max_tokens: Maximum output tokens.
             temperature: Sampling temperature.
+            tools: Optional list of tool definitions to forward to the API.
+                Server-side tools (e.g. ``web_search``) are executed by
+                Anthropic's infrastructure within the same request — the
+                returned :class:`LLMResponse` is the model's final answer
+                after any tool turns. Use :func:`web_search_tool` to build
+                the canonical web-search definition.
 
         Returns:
             :class:`LLMResponse`. API errors (status, connection) are captured
@@ -105,6 +112,8 @@ class AnthropicClient:
         }
         if system.strip():
             kwargs["system"] = system
+        if tools:
+            kwargs["tools"] = tools
 
         t0 = time.perf_counter()
         try:
@@ -119,6 +128,7 @@ class AnthropicClient:
                 error_message=str(exc),
                 duration_seconds=elapsed,
                 model=self._model,
+                web_search_requests=0,
             )
         except APIConnectionError as exc:
             elapsed = time.perf_counter() - t0
@@ -129,6 +139,7 @@ class AnthropicClient:
                 error_message=f"Could not connect to the Anthropic API: {exc}",
                 duration_seconds=elapsed,
                 model=self._model,
+                web_search_requests=0,
             )
 
         elapsed = time.perf_counter() - t0
@@ -136,12 +147,14 @@ class AnthropicClient:
         input_tokens = int(getattr(message.usage, "input_tokens", 0) or 0)
         output_tokens = int(getattr(message.usage, "output_tokens", 0) or 0)
         response_model = str(getattr(message, "model", "") or self._model)
+        web_search_requests = self._extract_web_search_count(message)
 
         _log.info(
             "anthropic_ok",
             model=response_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            web_search_requests=web_search_requests,
             duration_seconds=round(elapsed, 3),
             content_chars=len(content),
         )
@@ -155,6 +168,7 @@ class AnthropicClient:
             stop_reason=str(getattr(message, "stop_reason", "") or ""),
             model=response_model,
             duration_seconds=elapsed,
+            web_search_requests=web_search_requests,
         )
 
     def verify(self) -> LLMResponse:
@@ -168,5 +182,27 @@ class AnthropicClient:
 
     @staticmethod
     def _extract_text(message: Message) -> str:
-        """Concatenate the ``text`` of every ``TextBlock`` in the message."""
+        """Concatenate the ``text`` of every ``TextBlock`` in the message.
+
+        When server-side tools (e.g. ``web_search``) are used, the message
+        content interleaves ``server_tool_use`` and tool-result blocks with
+        ``TextBlock`` blocks. This skips the non-text blocks; the returned
+        string is the model's narrative + final answer.
+        """
         return "".join(b.text for b in message.content if isinstance(b, TextBlock))
+
+    @staticmethod
+    def _extract_web_search_count(message: Message) -> int:
+        """Read the ``server_tool_use.web_search_requests`` count from usage.
+
+        Anthropic exposes this on ``message.usage.server_tool_use``. Returns
+        ``0`` when the field is missing (no tool used, older SDK, or the
+        provider-specific shape changes).
+        """
+        usage = getattr(message, "usage", None)
+        if usage is None:
+            return 0
+        server_tool_use = getattr(usage, "server_tool_use", None)
+        if server_tool_use is None:
+            return 0
+        return int(getattr(server_tool_use, "web_search_requests", 0) or 0)

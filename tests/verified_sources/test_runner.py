@@ -137,6 +137,68 @@ class TestSuccessPath:
         assert kw["temperature"] == 0.2
 
 
+class TestWebSearch:
+    def test_web_search_default_on(self, mocker: MockerFixture) -> None:
+        client = _client_returning(_GOOD_JSON)
+        mocker.patch(
+            "berb_common.verified_sources.runner.filter_dead_rows",
+            return_value=([], []),
+        )
+        run_verified_step(_request(), client=client)
+        tools = client.call.call_args.kwargs["tools"]
+        assert tools is not None
+        assert tools[0]["name"] == "web_search"
+        assert tools[0]["max_uses"] == 5
+
+    def test_web_search_off_omits_tool(self, mocker: MockerFixture) -> None:
+        client = _client_returning(_GOOD_JSON)
+        mocker.patch(
+            "berb_common.verified_sources.runner.filter_dead_rows",
+            return_value=([], []),
+        )
+        run_verified_step(_request(), client=client, web_search=False)
+        assert client.call.call_args.kwargs["tools"] is None
+
+    def test_web_search_max_uses_propagates(self, mocker: MockerFixture) -> None:
+        client = _client_returning(_GOOD_JSON)
+        mocker.patch(
+            "berb_common.verified_sources.runner.filter_dead_rows",
+            return_value=([], []),
+        )
+        run_verified_step(_request(), client=client, web_search_max_uses=2)
+        assert client.call.call_args.kwargs["tools"][0]["max_uses"] == 2
+
+    def test_web_search_domain_filters_propagate(self, mocker: MockerFixture) -> None:
+        client = _client_returning(_GOOD_JSON)
+        mocker.patch(
+            "berb_common.verified_sources.runner.filter_dead_rows",
+            return_value=([], []),
+        )
+        run_verified_step(
+            _request(),
+            client=client,
+            web_search_allowed_domains=["sec.gov", "nasdaq.com"],
+        )
+        assert client.call.call_args.kwargs["tools"][0]["allowed_domains"] == [
+            "sec.gov",
+            "nasdaq.com",
+        ]
+
+    def test_web_search_prompt_variant_matches_flag(self, mocker: MockerFixture) -> None:
+        client = _client_returning(_GOOD_JSON)
+        mocker.patch(
+            "berb_common.verified_sources.runner.filter_dead_rows",
+            return_value=([], []),
+        )
+        # On: prompt should reference the tool.
+        run_verified_step(_request(), client=client, web_search=True)
+        assert "web_search" in client.call.call_args.kwargs["system"]
+        # Off: memory-only wording.
+        client.call.reset_mock()
+        run_verified_step(_request(), client=client, web_search=False)
+        assert "Do NOT invent URLs" in client.call.call_args.kwargs["system"]
+
+
 class TestFailurePath:
     def test_llm_failure_returns_unsuccessful_result(self) -> None:
         client = _client_failing("rate limited")

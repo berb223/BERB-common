@@ -139,6 +139,52 @@ class TestCallSuccess:
         assert "system" not in kwargs
 
 
+class TestCallTools:
+    def test_no_tools_omits_field(self, fake_anthropic: MagicMock) -> None:
+        fake_anthropic.messages.create.return_value = _build_message()
+        client = AnthropicClient(api_key="sk", model="m")
+        client.call(user="Hello")
+        kwargs = fake_anthropic.messages.create.call_args.kwargs
+        assert "tools" not in kwargs
+
+    def test_tools_passed_through(self, fake_anthropic: MagicMock) -> None:
+        fake_anthropic.messages.create.return_value = _build_message()
+        client = AnthropicClient(api_key="sk", model="m")
+        tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}]
+        client.call(user="Hello", tools=tools)
+        kwargs = fake_anthropic.messages.create.call_args.kwargs
+        assert kwargs["tools"] == tools
+
+    def test_empty_tools_list_omits_field(self, fake_anthropic: MagicMock) -> None:
+        # Truthiness check — empty list should not bother the API.
+        fake_anthropic.messages.create.return_value = _build_message()
+        client = AnthropicClient(api_key="sk", model="m")
+        client.call(user="Hello", tools=[])
+        kwargs = fake_anthropic.messages.create.call_args.kwargs
+        assert "tools" not in kwargs
+
+    def test_web_search_count_extracted_from_usage(self, fake_anthropic: MagicMock) -> None:
+        msg = _build_message()
+        # Anthropic surfaces the count on usage.server_tool_use.web_search_requests.
+        msg.usage = MagicMock(input_tokens=10, output_tokens=20)
+        msg.usage.server_tool_use = MagicMock(web_search_requests=3)
+        fake_anthropic.messages.create.return_value = msg
+        client = AnthropicClient(api_key="sk", model="m")
+        r = client.call(user="Hello")
+        assert r.web_search_requests == 3
+
+    def test_web_search_count_zero_when_field_missing(self, fake_anthropic: MagicMock) -> None:
+        msg = _build_message()
+        # Older SDK / no tool used: server_tool_use absent entirely.
+        msg.usage = MagicMock(
+            input_tokens=10, output_tokens=20, spec=["input_tokens", "output_tokens"]
+        )
+        fake_anthropic.messages.create.return_value = msg
+        client = AnthropicClient(api_key="sk", model="m")
+        r = client.call(user="Hello")
+        assert r.web_search_requests == 0
+
+
 class TestCallFailure:
     def test_status_error_captured(self, fake_anthropic: MagicMock) -> None:
         fake_anthropic.messages.create.side_effect = _FakeStatusError(
