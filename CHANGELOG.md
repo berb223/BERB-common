@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-05-06
+
+### Changed
+
+- **`berb_common` is now declared as a fully-typed package per [PEP 561](https://peps.python.org/pep-0561/).** The `py.typed` marker file ships in the wheel (it has shipped silently since the v0.1.3 wheel build, but was never announced); v0.1.5 makes the support explicit so downstream projects can pin against it deliberately. Net effect for consumers: `mypy --strict` recognizes types from `berb_common.*` imports without `# type: ignore[import-untyped]` workarounds. No public-API or runtime-behavior changes; safe upgrade from v0.1.3 / v0.1.4.
+
 ## [0.1.4] — 2026-05-05
 
 ### Changed
