@@ -58,21 +58,41 @@ OUTPUT RULES (STRICT):
 
 
 def build_user_prompt(request: VerifiedStepRequest) -> str:
-    """Return the user prompt for one research step."""
-    return "\n".join(
-        [
-            f"Verified Sources task: {request.title}",
-            "",
-            f"Company: {request.company_name}",
-            f"Country: {request.country}",
-            f"Industry: {request.industry}",
-            f"Website: {request.website}",
-            "",
-            "Research focus:",
-            request.focus,
-            "",
-            f'Set JSON field "category" exactly to: {request.category}',
-            "",
-            f"Return up to {request.max_results} results in the results array.",
-        ]
-    )
+    """Return the user prompt for one research step.
+
+    When ``request.website`` is supplied, the prompt also asks the model to
+    treat that domain as an authoritative first-party source — explicitly
+    check it (via ``site:<domain>`` search when web_search is on, or recall
+    from it when off) for topics the company's own pages plausibly cover
+    (press releases, IR, partner directories, technical blog, etc.). The
+    model still cross-references with external sources for breadth.
+    """
+    lines = [
+        f"Verified Sources task: {request.title}",
+        "",
+        f"Company: {request.company_name}",
+        f"Country: {request.country}",
+        f"Industry: {request.industry}",
+        f"Website: {request.website}",
+        "",
+        "Research focus:",
+        request.focus,
+        "",
+        f'Set JSON field "category" exactly to: {request.category}',
+        "",
+        f"Return up to {request.max_results} results in the results array.",
+    ]
+    if request.website.strip():
+        lines.extend(
+            [
+                "",
+                f"First-party source: the company's own domain is {request.website}.",
+                "When the topic is plausibly covered there (press releases, investor "
+                "relations, partner directories, official statements, technical blog "
+                "posts, careers pages, leadership pages), explicitly check that "
+                "domain — for example, with a site:-restricted search — and include "
+                "at least one results entry whose URL lives on that domain when one "
+                "is available. Cross-reference with external sources for breadth.",
+            ]
+        )
+    return "\n".join(lines)

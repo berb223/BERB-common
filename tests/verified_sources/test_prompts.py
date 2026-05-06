@@ -80,3 +80,19 @@ class TestUserPrompt:
     def test_relays_max_results(self) -> None:
         out = build_user_prompt(_request(max_results=3))
         assert "up to 3 results" in out
+
+    def test_first_party_source_instruction_when_website_supplied(self) -> None:
+        out = build_user_prompt(_request(website="https://acme.example"))
+        assert "First-party source" in out
+        assert "https://acme.example" in out
+        # Cues both web_search and memory-only paths cover.
+        assert "site:" in out
+        assert "press releases" in out
+
+    def test_no_first_party_instruction_when_website_blank(self) -> None:
+        out = build_user_prompt(_request(website=""))
+        assert "First-party source" not in out
+
+    def test_no_first_party_instruction_when_website_whitespace(self) -> None:
+        out = build_user_prompt(_request(website="   "))
+        assert "First-party source" not in out
