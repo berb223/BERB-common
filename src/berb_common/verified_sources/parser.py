@@ -72,7 +72,7 @@ def _extract_url_token(text: str, start_pos: int) -> str:
     return text[start_pos:]
 
 
-def parse_pipe_fallback(text: str, *, max_rows: int) -> list[VerifiedSourceRow]:
+def parse_pipe_fallback(text: str, *, max_rows: int = 10) -> list[VerifiedSourceRow]:
     """Recover rows from raw text when JSON parsing fails.
 
     Walks the input scanning for ``https://`` literals and emits one row per
