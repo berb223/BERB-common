@@ -26,9 +26,7 @@ class TestCatalog:
                 ("tier_2", tier_list.tier_2),
                 ("tier_3", tier_list.tier_3),
             ):
-                assert tier.description.strip(), (
-                    f"{activity}.{label} description is empty"
-                )
+                assert tier.description.strip(), f"{activity}.{label} description is empty"
                 assert tier.sources, f"{activity}.{label} sources is empty"
 
     def test_people_tier_2_includes_linkedin(self) -> None:

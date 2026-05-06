@@ -99,9 +99,7 @@ class TestUserPrompt:
         assert "First-party source" not in out
 
     def test_activity_renders_source_hierarchy(self) -> None:
-        out = build_user_prompt(
-            _request(activity=Activity.PEOPLE, website="https://acme.example")
-        )
+        out = build_user_prompt(_request(activity=Activity.PEOPLE, website="https://acme.example"))
         assert "SOURCE HIERARCHY" in out
         assert "linkedin.com" in out
         # Customer-website substitution applies inside the hierarchy too.

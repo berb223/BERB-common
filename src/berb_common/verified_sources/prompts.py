@@ -100,9 +100,7 @@ def build_user_prompt(request: VerifiedStepRequest) -> str:
         lines.extend(
             [
                 "",
-                render_source_hierarchy(
-                    request.activity, customer_website=request.website
-                ),
+                render_source_hierarchy(request.activity, customer_website=request.website),
             ]
         )
     return "\n".join(lines)
