@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-05-06
+
+### Changed
+
+- **`build_user_prompt` now adds a "first-party source" instruction when `request.website` is non-empty.** The prompt tells the model to treat the company's own domain as authoritative and explicitly check it (via a `site:<domain>` search when web_search is on, or recall from it when off) for topics plausibly covered there — press releases, IR, partner directories, technical blog, careers, leadership pages. Cross-reference with external sources stays encouraged. No-op when `website` is blank, so consumers passing only a topic + framing don't get extra noise.
+
 ## [0.3.0] — 2026-05-06
 
 ### Added
