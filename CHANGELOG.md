@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-06
+
+### Changed
+
+- **`parse_pipe_fallback` now defaults `max_rows=10`** — symmetric with `parse_verified_sources_json`, removes the need for consumers to pass the keyword (FTNT-sales-workbench's parsing-package shim wraps it just to add the default; this change retires that wrapper). No behaviour change for callers who pass `max_rows` explicitly.
+
 ## [0.2.0] — 2026-05-06
 
 ### Added
