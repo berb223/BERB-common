@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-06
+
+### Added
+
+- **`berb_common.research_sources` — authoritative-source catalog with per-activity tier lists.** Twelve `Activity` enum values (`COMPANY_FACTS`, `FINANCIAL_INFO`, `VISION_MISSION`, `PEOPLE`, `NEWS_MA_DEALS`, `STRATEGY_DIGITAL`, `TECHNOLOGY_IT`, `CYBERSECURITY`, `PARTNERS_ECOSYSTEM`, `COMPETITORS`, `REGULATORY_COMPLIANCE`, `INDUSTRY_MARKET`), each mapped via `ACTIVITY_SOURCES: dict[Activity, TierList]` to a three-tier preference list (Tier 1 = always check first / first-party; Tier 2 = specialist authority; Tier 3 = aggregator/press fallback). Customer-specific sources use a `{customer_website}` placeholder substituted at render time. New helper `render_source_hierarchy(activity, *, customer_website="")` returns a multi-line prompt fragment with a soft-preference clause — model gets a hint, not a fence (no `allowed_domains` lock-down so the model can still find unexpected legitimate sources).
+- **`VerifiedStepRequest.activity: Activity | None`** — when set, the runner appends the rendered tier list to the user prompt (after the first-party-source paragraph). Lets each Verified Sources step bind to a specific activity (e.g., IND_S5 → `Activity.NEWS_MA_DEALS`) so the LLM gets the right authoritative-source ordering.
+- LinkedIn is in `Activity.PEOPLE` Tier 2; Yahoo Finance is in `Activity.FINANCIAL_INFO` Tier 3; Fortinet's threat-landscape report and FortiGuard Labs are in `Activity.CYBERSECURITY` Tier 2.
+
+### Changed
+
+- `build_user_prompt` now appends `render_source_hierarchy(...)` when `request.activity is not None`. No-op when activity is unset, so existing callers (BERB-common 0.3.x) keep their current prompt shape.
+
 ## [0.3.1] — 2026-05-06
 
 ### Changed

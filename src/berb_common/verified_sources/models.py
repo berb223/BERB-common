@@ -20,6 +20,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from berb_common.models import LLMResponse
+from berb_common.research_sources import Activity
 
 
 class VerifiedSourceRow(BaseModel):
@@ -76,6 +77,14 @@ class VerifiedStepRequest(BaseModel):
     website: str = ""
     max_results: int = Field(default=5, ge=1, le=50)
     framing: str = "You are a senior business analyst conducting account research."
+    activity: Activity | None = Field(
+        default=None,
+        description=(
+            "Optional research-activity tag. When set, the runner renders the "
+            "matching tier list from berb_common.research_sources into the user "
+            "prompt as a soft source preference."
+        ),
+    )
 
 
 class VerifiedStepResult(BaseModel):

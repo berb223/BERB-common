@@ -9,6 +9,7 @@ fields through.
 
 from __future__ import annotations
 
+from berb_common.research_sources import render_source_hierarchy
 from berb_common.verified_sources.models import VerifiedStepRequest
 
 
@@ -93,6 +94,15 @@ def build_user_prompt(request: VerifiedStepRequest) -> str:
                 "domain — for example, with a site:-restricted search — and include "
                 "at least one results entry whose URL lives on that domain when one "
                 "is available. Cross-reference with external sources for breadth.",
+            ]
+        )
+    if request.activity is not None:
+        lines.extend(
+            [
+                "",
+                render_source_hierarchy(
+                    request.activity, customer_website=request.website
+                ),
             ]
         )
     return "\n".join(lines)
