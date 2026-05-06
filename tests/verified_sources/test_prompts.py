@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from berb_common.research_sources import Activity
 from berb_common.verified_sources.models import VerifiedStepRequest
 from berb_common.verified_sources.prompts import build_system_prompt, build_user_prompt
 
@@ -96,3 +97,14 @@ class TestUserPrompt:
     def test_no_first_party_instruction_when_website_whitespace(self) -> None:
         out = build_user_prompt(_request(website="   "))
         assert "First-party source" not in out
+
+    def test_activity_renders_source_hierarchy(self) -> None:
+        out = build_user_prompt(_request(activity=Activity.PEOPLE, website="https://acme.example"))
+        assert "SOURCE HIERARCHY" in out
+        assert "linkedin.com" in out
+        # Customer-website substitution applies inside the hierarchy too.
+        assert "https://acme.example/leadership" in out
+
+    def test_no_activity_no_hierarchy(self) -> None:
+        out = build_user_prompt(_request(activity=None))
+        assert "SOURCE HIERARCHY" not in out
