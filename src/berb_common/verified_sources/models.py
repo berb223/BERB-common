@@ -105,7 +105,7 @@ class VerifiedStepResult(BaseModel):
     raw_response: str = ""
     llm_response: LLMResponse = Field(
         # Pydantic-mypy plugin does not pick up the positional default on
-        # ``LLMResponse.duration_seconds`` (declared as ``Field(0.0, ...)``),
-        # so we pass it explicitly to keep the factory typed under strict mode.
-        default_factory=lambda: LLMResponse(duration_seconds=0.0),
+        # ``LLMResponse.duration_seconds`` (declared as ``Field(0.0, ...)``);
+        # same applies to ``web_search_requests``. Pass both explicitly.
+        default_factory=lambda: LLMResponse(duration_seconds=0.0, web_search_requests=0),
     )

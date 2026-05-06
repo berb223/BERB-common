@@ -42,6 +42,26 @@ class TestSystemPrompt:
         assert "https://" in out
         assert "Do NOT invent URLs" in out
 
+    def test_web_search_variant_references_tool(self) -> None:
+        out = build_system_prompt(_request(), web_search=True)
+        assert "web_search" in out
+        assert "tool-result" in out or "search results" in out
+
+    def test_web_search_variant_drops_memory_only_phrasing(self) -> None:
+        out = build_system_prompt(_request(), web_search=True)
+        # Memory-only wording should not appear when tool use is enabled.
+        assert "Do NOT invent URLs" not in out
+
+    def test_default_is_memory_mode(self) -> None:
+        out = build_system_prompt(_request())
+        assert "web_search" not in out
+
+    def test_grounding_clause_in_both_variants(self) -> None:
+        # Rule 8 ("ground every description in actual content") applies to both
+        # modes — it's the second guardrail beyond URL provenance.
+        for ws in (False, True):
+            assert "Ground every description" in build_system_prompt(_request(), web_search=ws)
+
 
 class TestUserPrompt:
     def test_includes_topic_and_company(self) -> None:

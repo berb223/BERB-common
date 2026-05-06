@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-06
+
+### Added
+
+- **`AnthropicClient.call` accepts `tools=` for server-side tool use.** Forwarded directly to `messages.create()`. Server tools (e.g. `web_search`) are executed by Anthropic's infrastructure within the same request — the returned `LLMResponse` is the model's final answer after any tool turns.
+- **`berb_common.anthropic.web_search_tool(...)`** — canonical builder for Anthropic's `web_search_20250305` server tool. Args: `max_uses` (cost cap, default 5), `allowed_domains` / `blocked_domains` (mutually exclusive), `user_location` (optional approximate geo). Validates the allowed/blocked exclusivity and copies the location dict so caller mutations don't leak.
+- **`LLMResponse.web_search_requests`** — count of `web_search` server-tool calls the model made during the turn (parsed from `message.usage.server_tool_use.web_search_requests`). Useful for billing diagnostics — Anthropic charges $10 per 1,000 searches on top of token cost.
+- **`berb_common.verified_sources.run_verified_step` defaults `web_search=True`.** When on, the runner builds a `web_search_tool()` and the system prompt instructs the model to cite ONLY URLs that appeared in tool results. This eliminates URL fabrication at source — the model no longer recalls URLs from training data, it cites pages it actually saw. Pass `web_search=False` to keep the pre-0.3.0 memory-only behaviour (cheaper, but URLs are guessed). Additional knobs: `web_search_max_uses=5`, `web_search_allowed_domains`, `web_search_blocked_domains`.
+- **`build_system_prompt(request, *, web_search=False)`** — the prompt now branches on the flag. Memory-only path keeps the "Do NOT invent URLs" guardrail. Tool-use path tells the model to cite only URLs from tool-result blocks. Both paths add a new rule 8: "Ground every description in actual content from the cited source — do not invent facts about a company or topic the source does not support."
+
+### Changed
+
+- `berb_common.verified_sources` URL provenance is now two layers, both on by default: (1) **discovery** via `web_search` so the LLM only emits URLs it actually saw, and (2) **post-hoc validation** via `verify_urls` so the renderer never gets a 404. Disable individually for tests / offline runs / cost control.
+
 ## [0.2.1] — 2026-05-06
 
 ### Changed

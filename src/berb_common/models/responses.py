@@ -23,6 +23,10 @@ class LLMResponse(BaseModel):
         stop_reason: Provider-specific stop reason (e.g. ``"end_turn"``).
         model: Model identifier as reported by the provider.
         duration_seconds: Wall-clock time for the request.
+        web_search_requests: Count of Anthropic ``web_search`` server-tool calls
+            the model made during this turn (``0`` when no tool was used or no
+            search occurred). Useful for billing diagnostics — Anthropic
+            charges per search on top of token cost.
 
     Example:
         >>> r = LLMResponse(success=True, content="Hello", input_tokens=5, output_tokens=2)
@@ -39,6 +43,10 @@ class LLMResponse(BaseModel):
     stop_reason: str = ""
     model: str = ""
     duration_seconds: float = Field(0.0, description="Wall-clock seconds for the request")
+    web_search_requests: int = Field(
+        0,
+        description="Number of web_search server-tool calls the model made",
+    )
 
     @property
     def total_tokens(self) -> int:
